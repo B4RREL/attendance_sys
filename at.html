@@ -578,6 +578,28 @@
             }
         }
 
+        async function validateNewFace(newDescriptor) {
+            const DUPLICATE_THRESHOLD = 0.45; // Even stricter threshold for duplicates
+            
+            for (const student of students) {
+                if (!student.descriptor) continue;
+                
+                const storedDescriptor = new Float32Array(student.descriptor);
+                const distance = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
+                
+                if (distance < DUPLICATE_THRESHOLD) {
+                    return {
+                        isDuplicate: true,
+                        existingStudent: student,
+                        distance: distance
+                    };
+                }
+            }
+            
+            return { isDuplicate: false };
+        }
+
+
         // Register student with improved error handling
         async function registerStudent() {
             const name = document.getElementById('studentName').value.trim();
@@ -637,6 +659,15 @@
                         
                         if (!detection) {
                             showStatus('registerStatus', 'No face detected in the image. Please try another photo.', 'error');
+                            return;
+                        }
+
+                        // Check for duplicate faces
+                        const duplicateCheck = await validateNewFace(detection.descriptor);
+                        if (duplicateCheck.isDuplicate) {
+                            showStatus('registerStatus', 
+                                `This face appears similar to existing student: ${duplicateCheck.existingStudent.name}. 
+                                Please verify to prevent duplicate registration.`, 'error');
                             return;
                         }
 
